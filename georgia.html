@@ -1,0 +1,194 @@
+<html>
+  <head>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js" integrity="sha384-ygbV9kiqUc6oa4msXn9868pTtWMgiQaeYH7/t7LECLbyPA2x65Kgf80OJFdroafW" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+  <!-- Load plotly.js into the DOM -->
+  <script src='https://cdn.plot.ly/plotly-latest.min.js'></script>
+  <script>
+   let georgiaJsonGlobal;
+   let predJsonGlobal;
+   let currentCounty; //most recently clicked
+
+   function getStagePrefix(stageText) {
+     stageText = stageText || $('div#count-buttons button.active').text();
+     return {
+       "Total": "proj_",
+       "Counted": "",
+       "Remaining": "outs_"
+     }[stageText];
+   }
+
+   function getCategoryName(categoryText) {
+     categoryText = categoryText || $('div#category-buttons button.active').text();
+     return {
+       "Total": "total",
+       "Early Votes": "Advanced Voting Votes",
+       "Mail-in Votes": "Absentee by Mail Votes",
+       "Election Day Votes": "Election Day Votes"
+     }[categoryText];
+   }
+
+   function setVoteCount() {
+     let categoryName = getCategoryName();
+     let stagePrefix = getStagePrefix();
+
+     let demCnt = predJsonGlobal["state"][categoryName][`${stagePrefix}dem`];
+     let repCnt = predJsonGlobal["state"][categoryName][`${stagePrefix}rep`];
+     $('#dem-vote-cnt').text(demCnt.toLocaleString());
+     $('#rep-vote-cnt').text(repCnt.toLocaleString());
+   }
+
+   function setPrecinctInfo(countyName) {
+     countyName = countyName || currentCounty;
+
+     let data = []
+
+     for (let k in predJsonGlobal["precinct"]) {
+       let county = k.split("|")[0];
+       if (county.replace("_"," ") !== countyName) continue;
+       let precinct = k.split("|")[1];
+       let categoryName = getCategoryName();
+       let stagePrefix = getStagePrefix();
+       data.push({
+         precinct,
+         rep: predJsonGlobal["precinct"][k][categoryName][`${stagePrefix}rep`],
+         dem: predJsonGlobal["precinct"][k][categoryName][`${stagePrefix}dem`],
+         total: predJsonGlobal["precinct"][k][categoryName][`${stagePrefix}total`]
+       });
+     }
+
+     let totalRow = {precinct: "Total"};
+     for (let x of data) {
+       totalRow["rep"] = (totalRow["rep"] || 0) + x["rep"];
+       totalRow["dem"] = (totalRow["dem"] || 0) + x["dem"];
+       totalRow["total"] = (totalRow["total"] || 0) + x["total"];
+     }
+
+     //add totals to the top:
+     data = [totalRow].concat(data);
+
+     let fields = ["precinct", "rep", "dem", "total"];
+
+     var rows = '<thead><tr><th>Precinct</th><th>Republican</th><th>Democrat</th><th>Total</th></tr></thead>';
+     $.each(data, function(index, item) {
+       var row = '<tr>';
+       $.each(fields, function(index, field) {
+         row += '<td>' + item[field+''] + '</td>';
+       });
+       rows += row + '</tr>';
+     });
+     $('#table-text').text(`${countyName} County`);
+     $('#data-table').html(rows);
+   }
+
+   function computeZ(stageText, categoryText) {
+     let stagePrefix = getStagePrefix(stageText);
+
+     let categoryName = getCategoryName(categoryText);
+
+     return georgiaJsonGlobal.features.map(x => x.properties.NAME.replace(" ","_")).map(x => {
+       let rep = predJsonGlobal["county"][x][categoryName][`${stagePrefix}rep`];
+       let dem = predJsonGlobal["county"][x][categoryName][`${stagePrefix}dem`];
+       return (100 * (rep - dem) / (rep + dem + 1e-6)).toFixed(1);
+     });
+   }
+
+   function drawPlot(domId, stageText, categoryText) {
+     Plotly.newPlot(domId, [{
+       type: 'choropleth',
+       locationmode: 'geojson-id',
+       geojson: georgiaJsonGlobal,
+       locations: georgiaJsonGlobal.features.map(x => x.properties.NAME),
+       featureidkey: 'properties.NAME',
+       colorscale: 'bluered',
+       colorbar: {
+         title: "Margin (%)"
+       },
+       z: computeZ(stageText, categoryText),
+       zmin: -100, //max dem
+       zmax: 100 //max rep
+     }], {
+       height: 550,
+       width: 1000,
+       geo: {
+         fitbounds: 'locations',
+         scope: 'usa',
+         countrycolor: 'rgb(255, 255, 255)',
+         showland: true,
+         landcolor: 'rgb(217, 217, 217)',
+         showlakes: true,
+         lakecolor: 'rgb(255, 255, 255)',
+         subunitcolor: 'rgb(255, 255, 255)',
+         lonaxis: {},
+         lataxis: {}
+       }
+     }, {
+       mapboxAccessToken: 'pk.eyJ1IjoicGxvdGx5LWRvY3MiLCJhIjoiY2s1MnNtODFwMDE4YjNscG5oYWNydXFxYSJ9.AquTxb6AI-oo7TWt01YQ9Q'
+     }).then(gd => {
+       gd.on('plotly_click', d => {
+         let pt = (d.points || [])[0] //not sure if this is necessary.. copied from somewhere but lost the source
+         currentCounty = pt.location;
+         setPrecinctInfo(pt.location);
+       })
+     });
+   }
+
+   Plotly.d3.json('georgia-counties.json', function(georgiaJson) {
+     Plotly.d3.json('pred.json', function(predJson) {
+       georgiaJsonGlobal = georgiaJson;
+       predJsonGlobal = predJson;
+       setVoteCount();
+
+       for (let county of georgiaJson.features.map(x => x.properties.NAME)) {
+         if (!predJson["county"][county.replace(" ","_")]) {
+           alert(county); /* hacky test for missing counties, TODO: create a proper check elsewhere */
+         }
+       }
+       drawPlot('countyMap', "Total", "Total");
+     });
+   });
+
+   window.onload = function() {
+     $('div.map-control button').click(function() {
+       $(this).addClass('active').siblings().removeClass('active');
+       drawPlot('countyMap'); /* should use restyle but it wasn't working? redrawing seems fast anyway... */
+       if (currentCounty) {
+         setPrecinctInfo();
+       }
+       setVoteCount();
+     });
+   }
+
+</script>
+
+<body>
+  <div style='display: flex; flex-direction: column; width: 100%; align-items: center; margin-top: 20px'>
+    <div><h1>Georgia Runoff Projections</h1></div>
+    <div style="height: 80px; display: flex; align-items: center">
+      <div style="margin-right: 15px"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Republican_Disc.svg/100px-Republican_Disc.svg.png" style="width: 75px"></img></div>
+      <h3><span id="rep-vote-cnt">?</span> - <span id="dem-vote-cnt">?</span></h3>
+      <div style="margin-left: 15px"><img src="https://upload.wikimedia.org/wikipedia/commons/9/93/Democratic_Disc.svg" style="width: 75px"></img></div>
+    </div>
+    <div style="z-index:1; margin-bottom: -70px; margin-top: 30px">
+      <div id="count-buttons" class="btn-group map-control" style="margin: 0 15px">
+        <button type="button" class="btn btn-outline-secondary active">Total</button>
+        <button type="button" class="btn btn-outline-secondary">Counted</button>
+        <button type="button" class="btn btn-outline-secondary">Remaining</button>
+      </div>
+      <div id="category-buttons" class="btn-group map-control" style="margin: 0 15px">
+        <button type="button" class="btn btn-outline-secondary active">Total</button>
+        <button type="button" class="btn btn-outline-secondary">Early Votes</button>
+        <button type="button" class="btn btn-outline-secondary">Mail-in Votes</button>
+        <button type="button" class="btn btn-outline-secondary">Election Day Votes</button>
+      </div>
+    </div>
+    <div id='countyMap'><!-- Plotly chart will be drawn inside this DIV --></div>
+    <div style="display: flex; flex-direction: column;">
+      <h4 id="table-text" style="margin-bottom: 20px">Click on a county to view precinct information...</h4>
+      <table class="table table-striped" id="data-table" style="min-width: 1000px">
+      </table>
+    </div>
+  </div>
+</body>
+</html>
