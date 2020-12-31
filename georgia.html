@@ -37,6 +37,56 @@
      let repCnt = predJsonGlobal["state"][categoryName][`${stagePrefix}rep`];
      $('#dem-vote-cnt').text(demCnt.toLocaleString());
      $('#rep-vote-cnt').text(repCnt.toLocaleString());
+
+     //update progress bar
+     let dem = predJsonGlobal["state"][categoryName][`dem`];
+     let rep = predJsonGlobal["state"][categoryName][`rep`];
+     let outsDem = predJsonGlobal["state"][categoryName][`outs_dem`] + 1000000;
+     let outsRep = predJsonGlobal["state"][categoryName][`outs_rep`] + 1000000;
+
+     let total = 1e-6;
+     let updates = {
+       rep: {selector: 'div#rep-progress-bar', votes: rep, show: false},
+       outsRep: {selector: 'div#outs-rep-progress-bar', votes: outsRep, show: false},
+       outsDem: {selector: 'div#outs-dem-progress-bar', votes: outsDem, show: false},
+       dem: {selector: 'div#dem-progress-bar', votes: dem, show: false}
+     };
+
+     if (stagePrefix === "") {
+       total += dem + rep;
+       updates["dem"]["show"] = true;
+       updates["rep"]["show"] = true;
+     } else if (stagePrefix === "outs_") {
+       total += outsDem + outsRep;
+       updates["outsDem"]["show"] = true;
+       updates["outsRep"]["show"] = true;
+     } else if (stagePrefix === "proj_") {
+       total += dem + rep + outsDem + outsRep;
+       updates["dem"]["show"] = true;
+       updates["rep"]["show"] = true;
+       updates["outsDem"]["show"] = true;
+       updates["outsRep"]["show"] = true;
+     }
+
+     for (let type in updates) {
+       let pct = 100 * updates[type]["votes"] / total;
+       let selector = updates[type]["selector"];
+       if (updates[type]["show"]) {
+         $(selector).css('width',`${pct}%`).attr('aria-valuenow',pct).text(updates[type]["votes"].toLocaleString());
+       } else {
+         $(selector).css('width',`0%`).attr('aria-valuenow',0).text("");
+       }
+     }
+     //wait briefly after the above for dom updates, then
+     //check to clear text if it's overflowing
+     setTimeout(() => {
+       for (let type in updates) {
+         let selector = updates[type]["selector"];
+         if ($(selector)[0].scrollWidth > ($(selector).width()+1)) {
+           $(selector).text("");
+         }
+       }
+     },500);
    }
 
    function setPrecinctInfo(countyName) {
@@ -170,6 +220,13 @@
       <div style="margin-right: 15px"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Republican_Disc.svg/100px-Republican_Disc.svg.png" style="width: 75px"></img></div>
       <h3><span id="rep-vote-cnt">?</span> - <span id="dem-vote-cnt">?</span></h3>
       <div style="margin-left: 15px"><img src="https://upload.wikimedia.org/wikipedia/commons/9/93/Democratic_Disc.svg" style="width: 75px"></img></div>
+    </div>
+    <div class="progress" style="width: 500px; margin-top: 15px; margin-bottom: 3px">
+      <div id="rep-progress-bar" class="progress-bar" role="progressbar" style="width: 50%; background: #ff0000" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100"></div>
+      <div id="outs-rep-progress-bar" class="progress-bar" role="progressbar" style="background: #ff8080" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+      <div id="outs-dem-progress-bar" class="progress-bar" role="progressbar" style="background: #80a0ff;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+      <div id="dem-progress-bar" class="progress-bar" role="progressbar" style="width: 50%; background: #0000ff" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100"></div>
+      <div style="width: 2px; height: 16px; position: absolute; background: black; right: 50%;"></div>
     </div>
     <div style="z-index:1; margin-bottom: -70px; margin-top: 30px">
       <div id="count-buttons" class="btn-group map-control" style="margin: 0 15px">
