@@ -175,7 +175,8 @@
          lataxis: {}
        }
      }, {
-       mapboxAccessToken: 'pk.eyJ1IjoicGxvdGx5LWRvY3MiLCJhIjoiY2s1MnNtODFwMDE4YjNscG5oYWNydXFxYSJ9.AquTxb6AI-oo7TWt01YQ9Q'
+       mapboxAccessToken: 'pk.eyJ1IjoicGxvdGx5LWRvY3MiLCJhIjoiY2s1MnNtODFwMDE4YjNscG5oYWNydXFxYSJ9.AquTxb6AI-oo7TWt01YQ9Q',
+       displayModeBar: false
      }).then(gd => {
        gd.on('plotly_click', d => {
          let pt = (d.points || [])[0] //not sure if this is necessary.. copied from somewhere but lost the source
