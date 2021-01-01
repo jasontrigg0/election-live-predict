@@ -1159,10 +1159,21 @@ if __name__ == "__main__":
     #convert (county, precinct) tuple keys to "county|precinct" string for json export
     precinct_data = {"|".join(x):precinct_data[x] for x in precinct_data}
 
+    #MUST: generate proper data instead of just copying
+    with open("precinct-pred.json","w") as f_out:
+        f_out.write(json.dumps({
+            "perdue": precinct_data,
+            "loeffler": precinct_data
+        }));
+
     with open("pred.json","w") as f_out:
-        dat = json.dumps({
-            "precinct": precinct_data,
-            "county": county_data,
-            "state": state_data
-        })
-        f_out.write(dat)
+        f_out.write(json.dumps({
+            "perdue": {
+                "county": county_data,
+                "state": state_data
+            },
+            "loeffler": {
+                "county": county_data,
+                "state": state_data
+            }
+        }))

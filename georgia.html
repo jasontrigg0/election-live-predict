@@ -8,7 +8,9 @@
   <script src='https://cdn.plot.ly/plotly-latest.min.js'></script>
   <script>
    let georgiaJsonGlobal;
-   let predJsonGlobal;
+   let predJsonGlobal; //smaller dataset with county + state data
+   let precinctPredJsonGlobal; //big dataset with the precinct data
+   let currentElection = "perdue"; //vs loeffler
    let currentCounty; //most recently clicked
 
    function getStagePrefix(stageText) {
@@ -30,20 +32,28 @@
      }[categoryText];
    }
 
+   function updateData() {
+     drawPlot('countyMap');
+     if (currentCounty) {
+       setPrecinctInfo();
+     }
+     setVoteCount();
+   }
+
    function setVoteCount() {
      let categoryName = getCategoryName();
      let stagePrefix = getStagePrefix();
 
-     let demCnt = predJsonGlobal["state"][categoryName][`${stagePrefix}dem`];
-     let repCnt = predJsonGlobal["state"][categoryName][`${stagePrefix}rep`];
+     let demCnt = predJsonGlobal[currentElection]["state"][categoryName][`${stagePrefix}dem`];
+     let repCnt = predJsonGlobal[currentElection]["state"][categoryName][`${stagePrefix}rep`];
      $('#dem-vote-cnt').text(demCnt.toLocaleString());
      $('#rep-vote-cnt').text(repCnt.toLocaleString());
 
      //update progress bar
-     let dem = predJsonGlobal["state"][categoryName][`dem`];
-     let rep = predJsonGlobal["state"][categoryName][`rep`];
-     let outsDem = predJsonGlobal["state"][categoryName][`outs_dem`] + 1000000;
-     let outsRep = predJsonGlobal["state"][categoryName][`outs_rep`] + 1000000;
+     let dem = predJsonGlobal[currentElection]["state"][categoryName][`dem`];
+     let rep = predJsonGlobal[currentElection]["state"][categoryName][`rep`];
+     let outsDem = predJsonGlobal[currentElection]["state"][categoryName][`outs_dem`] + 1000000; //MUST: remove
+     let outsRep = predJsonGlobal[currentElection]["state"][categoryName][`outs_rep`] + 1000000;
 
      let total = 1e-6;
      let updates = {
@@ -90,22 +100,20 @@
      },500);
    }
 
-   function setPrecinctInfo(countyName) {
-     countyName = countyName || currentCounty;
-
+   function setPrecinctInfo() {
      let data = []
 
-     for (let k in predJsonGlobal["precinct"]) {
+     for (let k in precinctPredJsonGlobal[currentElection]) {
        let county = k.split("|")[0];
-       if (county.replace("_"," ") !== countyName) continue;
+       if (county.replace("_"," ") !== currentCounty) continue;
        let precinct = k.split("|")[1];
        let categoryName = getCategoryName();
        let stagePrefix = getStagePrefix();
        data.push({
          precinct,
-         rep: predJsonGlobal["precinct"][k][categoryName][`${stagePrefix}rep`],
-         dem: predJsonGlobal["precinct"][k][categoryName][`${stagePrefix}dem`],
-         total: predJsonGlobal["precinct"][k][categoryName][`${stagePrefix}total`]
+         rep: precinctPredJsonGlobal[currentElection][k][categoryName][`${stagePrefix}rep`],
+         dem: precinctPredJsonGlobal[currentElection][k][categoryName][`${stagePrefix}dem`],
+         total: precinctPredJsonGlobal[currentElection][k][categoryName][`${stagePrefix}total`]
        });
      }
 
@@ -129,18 +137,17 @@
        });
        rows += row + '</tr>';
      });
-     $('#table-text').text(`${countyName} County`);
+     $('#table-text').text(`${currentCounty} County`);
      $('#data-table').html(rows);
    }
 
    function computeZ(stageText, categoryText) {
      let stagePrefix = getStagePrefix(stageText);
-
      let categoryName = getCategoryName(categoryText);
 
      return georgiaJsonGlobal.features.map(x => x.properties.NAME.replace(" ","_")).map(x => {
-       let rep = predJsonGlobal["county"][x][categoryName][`${stagePrefix}rep`];
-       let dem = predJsonGlobal["county"][x][categoryName][`${stagePrefix}dem`];
+       let rep = predJsonGlobal[currentElection]["county"][x][categoryName][`${stagePrefix}rep`];
+       let dem = predJsonGlobal[currentElection]["county"][x][categoryName][`${stagePrefix}dem`];
        return (100 * (rep - dem) / (rep + dem + 1e-6)).toFixed(1);
      });
    }
@@ -176,13 +183,13 @@
          lataxis: {}
        }
      }, {
-       mapboxAccessToken: 'pk.eyJ1IjoicGxvdGx5LWRvY3MiLCJhIjoiY2s1MnNtODFwMDE4YjNscG5oYWNydXFxYSJ9.AquTxb6AI-oo7TWt01YQ9Q',
+       mapboxAccessToken: 'pk.eyJ1IjoicGxvdGx5LWRvY3MiLCJhIjoiY2s1MnNtODFwMDE4YjNscG5oYWNydXFxYSJ9.AquTxb6AI-oo7TWt01YQ9Q', //MUST: generate new token
        displayModeBar: false
      }).then(gd => {
        gd.on('plotly_click', d => {
          let pt = (d.points || [])[0] //not sure if this is necessary.. copied from somewhere but lost the source
          currentCounty = pt.location;
-         setPrecinctInfo(pt.location);
+         setPrecinctInfo();
        })
      });
    }
@@ -194,22 +201,35 @@
        setVoteCount();
 
        for (let county of georgiaJson.features.map(x => x.properties.NAME)) {
-         if (!predJson["county"][county.replace(" ","_")]) {
-           alert(county); /* hacky test for missing counties, TODO: create a proper check elsewhere */
+         if (!predJson[currentElection]["county"][county.replace(" ","_")]) {
+           alert(county); /* hacky test for missing counties, MUST: create a proper check elsewhere -- python? */
          }
        }
        drawPlot('countyMap', "Total", "Total");
      });
    });
 
+   //precinct data is much larger, so load it asynchronously
+   //it isn't needed until user clicks the map
+   Plotly.d3.json('precinct-pred.json', function(precinctPredJson) {
+     precinctPredJsonGlobal = precinctPredJson;
+   });
+
    window.onload = function() {
+     $('div#election-buttons button').click(function() {
+       $(this).addClass('active').siblings().removeClass('active');
+
+       //MUST: replace election with proper names
+       currentElection = {
+         "Perdue - Ossoff": "perdue",
+         "Loeffler - Warnock": "loeffler"
+       }[$('div#election-buttons button.active').text()];
+
+       updateData();
+     });
      $('div.map-control button').click(function() {
        $(this).addClass('active').siblings().removeClass('active');
-       drawPlot('countyMap'); /* should use restyle but it wasn't working? redrawing seems fast anyway... */
-       if (currentCounty) {
-         setPrecinctInfo();
-       }
-       setVoteCount();
+       updateData();
      });
    }
 
