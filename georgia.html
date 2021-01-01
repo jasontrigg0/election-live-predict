@@ -215,8 +215,17 @@
 </script>
 
 <body>
-  <div style='display: flex; flex-direction: column; width: 100%; align-items: center; margin-top: 20px'>
-    <div><h1>Georgia Runoff Projections</h1></div>
+  <nav class="navbar navbar-expand-lg justify-content-center" style="background: #343434">
+    <div style="color: white; margin-right: 10px"><h3 style="margin-bottom: 0">Georgia Runoff Projections</h3></div>
+    <div id="election-buttons" class="btn-group map-control" style="margin: 10px 20px 10px">
+      <button type="button" class="btn btn-outline-secondary active">Perdue - Ossoff</button>
+      <button type="button" class="btn btn-outline-secondary">Loeffler - Warnock</button>
+    </div>
+  </nav>
+  <div style='display: flex; flex-direction: column; width: 100%; align-items: center; padding-top: 30px'>
+    <div style="width: 700px; margin-top: 0px; margin-bottom: 20px">
+        <span>Live vote count updates along with projections for incomplete counties and precincts. Data from the <a href="https://sos.ga.gov/index.php/Elections/current_and_past_elections_results">Georgia Secretary of State</a> and expected vote counts from Georgia's <a href="https://elections.sos.ga.gov/Elections/voterabsenteefile.do">absentee file</a>.</span>
+    </div>
     <div style="height: 80px; display: flex; align-items: center">
       <div style="margin-right: 15px"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Republican_Disc.svg/100px-Republican_Disc.svg.png" style="width: 75px"></img></div>
       <h3><span id="rep-vote-cnt">?</span> - <span id="dem-vote-cnt">?</span></h3>
