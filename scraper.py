@@ -8,6 +8,7 @@ import zipfile
 import datetime
 import itertools
 import os
+import time
 
 def get(url, options=None):
     delay = 1
@@ -36,6 +37,8 @@ def all_county_info(election_id):
 
 def scrape_general_election_results(election_id, county_versions):
     for county_info in all_county_info(election_id):
+        if county_info["county"] in ["Muscogee","Taylor"]: #MUST: Muscogee+Taylor broken, remove once they're working eg: https://results.enr.clarityelections.com//GA/Muscogee/107663/?v=273012
+            continue
         #only download for counties with new updates available
         if int(county_info["version"]) <= int(county_versions.get(county_info["county"],-1)):
             continue
@@ -45,7 +48,8 @@ def scrape_general_election_results(election_id, county_versions):
             raise
         completion = {p:1*(s==4) for p,s in zip(dat["P"],dat["S"])} #TODO: confirm this works for not-started precincts pre-election
 
-        for row in scrape_county_results_xml(county_info):
+        #NOTE: as of Jan 5, 11:25 AM looks like xml isn't available? Using scrape_county_results_json instead
+        for row in scrape_county_results_json(county_info):
             row["complete"] = completion[row["precinct"]]
             yield row
 
@@ -175,11 +179,19 @@ def update_nov_3_election_data():
     return update_election_data(105369, "/tmp/election_results_nov_3.csv", contest_name_mapping)
 
 def update_jan_5_election_data():
-    #MUST: fill in election id and contest_name_mapping
+    #would normally find election info through the homepage:
+    #https://sos.ga.gov/index.php/Elections/current_and_past_elections_results
+    #but as of ~12p on election day they weren't linking it in advance
+    #however googling found it listed here: https://results.enr.clarityelections.com/GA/Thomas/
+    #maybe could've pinged every election id to find it otherwise?
+    #or waited for the link, though the prep time is helpful
     contest_name_mapping = {
-
+        "US Senate (Perdue)": "perdue",
+        "US Senate (Loeffler) - Special": "loeffler",
+        "US Senate (Perdue)/Senado de los EE.UU. (Perdue)": "perdue",
+        "US Senate (Loeffler) - Special/Senado de los EE.UU. (Loeffler) - Especial": "loeffler"
     }
-    return update_election_data(None, "/tmp/election_results_jan_5.csv", contest_name_mapping)
+    return update_election_data(107556, "/tmp/election_results_jan_5.csv", contest_name_mapping)
 
 def scrape_betfair_odds():
     cookies = {
@@ -242,6 +254,7 @@ def scrape_betfair_odds():
     for data in response_data:
         writer.writerow({"time": datetime.datetime.now(), "candidate": data["candidate"], "odds": data["odds"]})
 
+
 if __name__ == "__main__":
     #scrape_betfair_odds()
-    #update_nov_3_election_data()
+    #update_jan_5_election_data()

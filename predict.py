@@ -428,20 +428,13 @@ def generate_predictions():
     #2) projection constants if specified
     #3) data from baseline election
 
-    #MUST: how many more mail-in ballots are expected?
-    #Nate Cohn saying something like 100k
-    #maybe look at the pattern from the nov 3 file on the days leading up to the election?
-
-    #MUST: on Jan 3 Nate Cohn estimates "[...] Ossoff will amass a lead of around 350k out of the advance vote, including what he'll net out of ~100k absentee votes still to arrive"
-    #where does the 100k estimate come from? are mail-in ballots that arrive late allowed?
-
     projection_constants = {
         "rep_dem_share": 1, #assuming everyone in the runoff will vote for one of the two candidates, website said no write-ins allowed
         "election_day_ratio": 0.81, #early voting is at 0.77 as of Jan 4 but maybe it would have been higher if not for the holidays, Nate Cohn suggesting 0.81 here: https://twitter.com/Nate_Cohn/status/1345766439135948801
         "election_day_mail_count": 0.83 * 42718, #spitball estimate of the same-day mailin vote to be received on election day as 83% of that received for the general election -- rough extrapolation from looking at the amount coming in each day in early_voting_trends.py
     }
 
-    early_voting = read_early_voting_data(35211, "01/05/2021", projection_constants) #jan 5 runoff #MUST: download latest version on election day
+    early_voting = read_early_voting_data(35211, "01/05/2021", projection_constants) #jan 5 runoff
 
     #generate a smaller dict with county and statewide info and a larger one with all precinct data
     pred = {}
@@ -456,7 +449,8 @@ def generate_predictions():
         print(f"Processing {live} election")
         baseline_election_data = read_election("/tmp/election_results_nov_3.csv")[baseline]
 
-        TESTING = True #MUST: change to False and generate /tmp/election_results_jan_5.csv
+        TESTING = False
+
         if TESTING:
             test_data = True #(live == "loeffler")
             live_election_data = read_election("/tmp/election_results_nov_3.csv", test_data)["perdue"]
