@@ -181,5 +181,67 @@ def update_jan_5_election_data():
     }
     return update_election_data(None, "/tmp/election_results_jan_5.csv", contest_name_mapping)
 
+def scrape_betfair_odds():
+    cookies = {
+        '__cfduid': 'db5973faceaefe3c7c2eb24ee88d049c61609859066',
+        'xsrftoken': '4dcb3180-4f67-11eb-8d10-fa163e3852cd',
+        'wsid': '4dcb3181-4f67-11eb-8d10-fa163e3852cd',
+        'vid': '8ac21c16-e0cb-451f-95af-9481c379ad1c',
+        'betexPtk': 'betexCurrency%3DGBP%7EbetexLocale%3Den%7EbetexRegion%3DGBR',
+        'betexPtkSess': 'betexCurrencySessionCookie%3DGBP%7EbetexLocaleSessionCookie%3Den%7EbetexRegionSessionCookie%3DGBR',
+        'bfsd': 'ts=1609859068317|st=p',
+        '_gcl_au': '1.1.1188426924.1609859069',
+        'storageSSC': 'lsSSC%3D1',
+        'exp': 'sb',
+        'PI': '3013',
+        'StickyTags': 'rfr=3013',
+        'TrackingTags': '',
+        'pi': 'partner3013',
+        'rfr': '3013',
+        'OptanonConsent': 'isIABGlobal=false&datestamp=Tue+Jan+05+2021+10%3A25%3A48+GMT-0500+(Eastern+Standard+Time)&version=6.6.0&hosts=&consentId=c86f7ba8-f0a3-43b5-90ae-6a158156c7a4&interactionCount=1&landingPath=NotLandingPage&groups=C0001%3A1%2CC0003%3A1%2CC0002%3A1%2CC0004%3A1&geolocation=%3B&AwaitingReconsent=false',
+        'OptanonAlertBoxClosed': '2021-01-05T15:05:24.987Z',
+        'Qualtrics_Cookie': '123456',
+        '_uetsid': '49c06f904f6a11ebb6f6f7551cb7bf67',
+        '_uetvid': '49c090804f6a11eb969d37159970e2ff',
+        '_scid': '91ba6b32-4835-4a14-8118-f69684d8fb0d',
+    }
+
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0',
+        'Accept': 'application/json',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Content-Type': 'application/json',
+        'X-Application': 'FIhovAzZxtrvphhu',
+        'Origin': 'https://www.betfair.com',
+        'DNT': '1',
+        'Connection': 'keep-alive',
+        'Referer': 'https://www.betfair.com/',
+        'TE': 'Trailers',
+    }
+
+    params = (
+        ('xsrftoken', '4dcb3180-4f67-11eb-8d10-fa163e3852cd'),
+        ('_ak', 'FIhovAzZxtrvphhu'),
+        ('priceHistory', '0'),
+    )
+
+    data = '{"alt":"json","locale":"en_GB","currencyCode":"GBP","marketIds":["924.246442444","924.245218724"]}'
+
+    response = requests.post('https://smp.betfair.com/www/sports/fixedodds/readonly/v1/getMarketPrices', headers=headers, params=params, cookies=cookies, data=data)
+
+    id_to_name = {
+        37071217: "perdue",
+        37071216: "ossoff",
+        36786003: "warnock",
+        36786002: "loeffler"
+    }
+
+    response_data = [{"candidate":id_to_name[y["selectionId"]], "odds": round(y["runnerOdds"]["trueOdds"]["decimalOdds"]["decimalOdds"],4)} for x in json.loads(response.text) for y in x["runnerDetails"]]
+
+    writer = csv.DictWriter(open("betfair.csv","a"),fieldnames=["time","candidate","odds"])
+    for data in response_data:
+        writer.writerow({"time": datetime.datetime.now(), "candidate": data["candidate"], "odds": data["odds"]})
+
 if __name__ == "__main__":
-    update_nov_3_election_data()
+    #scrape_betfair_odds()
+    #update_nov_3_election_data()
