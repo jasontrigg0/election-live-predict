@@ -199,12 +199,6 @@
        georgiaJsonGlobal = georgiaJson;
        predJsonGlobal = predJson;
        setVoteCount();
-
-       for (let county of georgiaJson.features.map(x => x.properties.NAME)) {
-         if (!predJson[currentElection]["county"][county.replace(" ","_")]) {
-           alert(county); /* hacky test for missing counties, MUST: create a proper check elsewhere -- python? */
-         }
-       }
        drawPlot('countyMap', "Total", "Total");
      });
    });
@@ -219,7 +213,6 @@
      $('div#election-buttons button').click(function() {
        $(this).addClass('active').siblings().removeClass('active');
 
-       //MUST: replace election with proper names
        currentElection = {
          "Perdue - Ossoff": "perdue",
          "Loeffler - Warnock": "loeffler"
