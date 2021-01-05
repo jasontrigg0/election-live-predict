@@ -13,23 +13,12 @@ import datetime
 #NYT
 #Georgia
 
-#read existing data along with the general election results to predict who's winning
-
 #are mailin ballots processed uniformly? are other ballots processed uniformly?
 
-#download precinct map here? https://openprecincts.org/ga/
-#looks like it's 30mb, could be better to stick with counties
-
-#what's the vote breakdown among completed precincts?
-
-#TODO: add county FIPS??
 #TODO: predict from a statewide estimate of remaining votes
 #TODO: predict from a county-by-county estimate of remaining votes
 
-#TODO: complete nov 3 absentee file matching -- maybe 70% done
 #TODO: check how the nov 3 absentee file compared to the real turnout, also how much came in on the last day? Also how much is the absentee file adjusted later?
-
-#TODO: ui!
 
 #High level:
 #should have a good idea of early voting and mail-in turnout (a lot of precincts are within a few votes)
@@ -79,6 +68,16 @@ def election_day_turnout(precinct_data, precinct_completion, baseline_precinct_d
 def gen_turnout_estimates(precinct_data, precinct_completion, baseline_precinct_data, early_voting, projection_constants):
     election_day_ratio = election_day_turnout(precinct_data, precinct_completion, baseline_precinct_data, early_voting, projection_constants)
 
+    #TODO: how to predict changes in turnout instead of just voters changing their minds?
+    #for example, if there are two types of partisan districts, 90-10 rep and 90-10 dem
+    #and no voters change their minds but democrats turn out +10% more voters than usual, while republicans vote normally
+    #then you'll measure that the two types of districts are coming in more like 89-11 rep and 91-9 dem
+    #which misses the major difference: the turnout in the two districts!
+    #a few tactics:
+    #- are there some vote types that are mixed together / counted at the county or state level instead of the precinct level? if so do predictions at that level
+    #- once a few districts are complete, try to measure a correlation between partisanship and turnout of completed districts
+    #- in so far as there's a correlation between voters changing their minds and turnout you could try to back out turnout from the margin difference
+    #- could you even say that if dem-leaning districts have counted more votes than rep-leaning districts at time t then that predicts some difference in final turnout, even if none of the districts have stopped counting?
     for precinct in precinct_data:
         for category in precinct_data[precinct]:
             data = precinct_data[precinct][category]
@@ -129,6 +128,7 @@ def get_category_projections(precinct_data, baseline_precinct_data):
             baseline_data = baseline_precinct_data[precinct][category]
             data = precinct_data[precinct][category]
 
+            #MUST: include rep_dem_share here
             margin_delta = data["margin_pct"] - baseline_data["margin_pct"]
             completion_pct = data["total"] / (data["proj_total"] + 1e-6)
             wt = weight_functions["linear"](completion_pct) * data["total"]
@@ -458,7 +458,7 @@ def generate_predictions():
 
         TESTING = True #MUST: change to False and generate /tmp/election_results_jan_5.csv
         if TESTING:
-            test_data = (live == "loeffler")
+            test_data = True #(live == "loeffler")
             live_election_data = read_election("/tmp/election_results_nov_3.csv", test_data)["perdue"]
         else:
             live_election_data = read_election("/tmp/election_results_jan_5.csv")[live]
@@ -478,4 +478,5 @@ def generate_predictions():
         f_out.write(json.dumps(precinct_pred));
 
 if __name__ == "__main__":
+    #debug_precinct_mapping()
     generate_predictions()
