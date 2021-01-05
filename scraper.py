@@ -9,10 +9,21 @@ import datetime
 import itertools
 import os
 
+def get(url, options=None):
+    delay = 1
+    while True:
+        try:
+            return requests.get(url, options)
+        except:
+            time.sleep(delay)
+            delay *= 1.25
+            if delay > 60:
+                raise
+
 def all_county_info(election_id):
-    current_version = requests.get(f"https://results.enr.clarityelections.com//GA/{election_id}/current_ver.txt").text
+    current_version = get(f"https://results.enr.clarityelections.com//GA/{election_id}/current_ver.txt").text
     url = f"https://results.enr.clarityelections.com//GA/{election_id}/{current_version}/json/en/electionsettings.json"
-    r = requests.get(url)
+    r = get(url)
 
     for county_string in json.loads(r.text)["settings"]["electiondetails"]["participatingcounties"]:
         county, county_election_id, version, georgia_timestamp, _ = county_string.split("|")
@@ -29,7 +40,7 @@ def scrape_general_election_results(election_id, county_versions):
         if int(county_info["version"]) <= int(county_versions.get(county_info["county"],-1)):
             continue
         #pull county precinct info:
-        dat = json.loads(requests.get(f"https://results.enr.clarityelections.com//GA/{county_info['county']}/{county_info['county_election_id']}/{county_info['version']}/json/status.json").text)
+        dat = json.loads(get(f"https://results.enr.clarityelections.com//GA/{county_info['county']}/{county_info['county_election_id']}/{county_info['version']}/json/status.json").text)
         if not len(dat["P"]) == len(dat["S"]):
             raise
         completion = {p:1*(s==4) for p,s in zip(dat["P"],dat["S"])} #TODO: confirm this works for not-started precincts pre-election
@@ -50,21 +61,21 @@ def scrape_county_results_json(county_info):
     #sum.json which sums across categories and precincts
     #summary.json other than contest ids (also sums across categories and precincts)
 
-    summary = json.loads(requests.get(f"https://results.enr.clarityelections.com//GA/{county}/{county_election_id}/{version}/json/en/summary.json").text)
+    summary = json.loads(get(f"https://results.enr.clarityelections.com//GA/{county}/{county_election_id}/{version}/json/en/summary.json").text)
     print(f"https://results.enr.clarityelections.com//GA/{county}/{county_election_id}/{version}/json/en/summary.json")
     id_to_contest = {x["K"]:x["C"] for x in summary}
     id_to_candidates = {x["K"]:x["CH"] for x in summary}
 
-    settings = json.loads(requests.get(f"https://results.enr.clarityelections.com//GA/{county}/{county_election_id}/{version}/json/en/electionsettings.json").text)
+    settings = json.loads(get(f"https://results.enr.clarityelections.com//GA/{county}/{county_election_id}/{version}/json/en/electionsettings.json").text)
     georgia_timestamp = settings["websiteupdatedat"]
 
     download_time = datetime.datetime.now()
 
     vote_types = {
-        "Election Day Votes": json.loads(requests.get(f"https://results.enr.clarityelections.com//GA/{county}/{county_election_id}/{version}/json/Election_Day_Votes.json").text),
-        "Absentee by Mail Votes": json.loads(requests.get(f"https://results.enr.clarityelections.com//GA/{county}/{county_election_id}/{version}/json/Absentee_by_Mail_Votes.json").text),
-        "Advanced Voting Votes": json.loads(requests.get(f"https://results.enr.clarityelections.com//GA/{county}/{county_election_id}/{version}/json/Advanced_Voting_Votes.json").text),
-        "Provisional Votes": json.loads(requests.get(f"https://results.enr.clarityelections.com//GA/{county}/{county_election_id}/{version}/json/Provisional_Votes.json").text)
+        "Election Day Votes": json.loads(get(f"https://results.enr.clarityelections.com//GA/{county}/{county_election_id}/{version}/json/Election_Day_Votes.json").text),
+        "Absentee by Mail Votes": json.loads(get(f"https://results.enr.clarityelections.com//GA/{county}/{county_election_id}/{version}/json/Absentee_by_Mail_Votes.json").text),
+        "Advanced Voting Votes": json.loads(get(f"https://results.enr.clarityelections.com//GA/{county}/{county_election_id}/{version}/json/Advanced_Voting_Votes.json").text),
+        "Provisional Votes": json.loads(get(f"https://results.enr.clarityelections.com//GA/{county}/{county_election_id}/{version}/json/Provisional_Votes.json").text)
     }
 
     for type_ in vote_types:
@@ -93,7 +104,7 @@ def scrape_county_results_json(county_info):
 def scrape_county_results_xml(county_info):
     download_time = datetime.datetime.now()
     url = f"https://results.enr.clarityelections.com//GA/{county_info['county']}/{county_info['county_election_id']}/{county_info['version']}/reports/detailxml.zip"
-    r = requests.get(url)
+    r = get(url)
     z = zipfile.ZipFile(io.BytesIO(r.content))
     if not "detail.xml" in z.namelist():
         raise
