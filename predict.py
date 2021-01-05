@@ -224,13 +224,16 @@ def read_election(filename, generate_test_data = False):
                 candidate[row["category"]] = int(row["votes"])
     return election_data
 
-def read_early_voting_data(id_):
+def read_early_voting_data(id_, election_day_mmddyyyy, projection_constants):
     #returns early_voting:
     #county_name -> "votes" -> precinct -> "total" -> category -> cnt
     precinct_mapping = load_precinct_mapping() #map from absentee file to early voting
     reader = csv.DictReader(open(f"/home/jason/Downloads/{id_}/STATEWIDE.csv",encoding = "ISO-8859-1"))
     early_voting = {}
     unavailable = set()
+
+    total_mail_count = 0
+    election_day_mail_count = 0
     for row in reader:
         if row["Ballot Status"] == "A": #think this means accepted? there's also "C" = canceled, "S" = surrendered, "R" = rejected?
             county_name = " ".join([x.capitalize() for x in row["County"].split()]).replace(" ","_")
@@ -251,8 +254,24 @@ def read_early_voting_data(id_):
             totals.setdefault("Advanced Voting Votes",0)
             if row["Ballot Style"] == "MAILED":
                 totals["Absentee by Mail Votes"] += 1
+
+                total_mail_count += 1
+                if row["Ballot Return Date"] == election_day_mmddyyyy:
+                    election_day_mail_count += 1
             elif row["Ballot Style"] == "IN PERSON":
                 totals["Advanced Voting Votes"] += 1
+
+    #adjust mailin counts upward to account for ballots that haven't been received
+    #second clause of the if statement to automatically turn off this adjustment if/when we have an early vote file
+    #that includes the election day mail count (probably will arrive in the middle of the night of the election)
+    if "election_day_mail_count" in projection_constants and election_day_mail_count < 0.25 * projection_constants["election_day_mail_count"]:
+        outstanding_election_day_count = projection_constants["election_day_mail_count"] - election_day_mail_count
+        multiplier = (total_mail_count + outstanding_election_day_count) / total_mail_count #adjust all by this factor
+        for county_name in early_voting:
+            for precinct_name in early_voting[county_name]["votes"]:
+                vote_counts = early_voting[county_name]["votes"][precinct_name]["total"]
+                vote_counts["Absentee by Mail Votes"] = round(vote_counts["Absentee by Mail Votes"] * multiplier)
+
     return early_voting
 
 def load_precinct_mapping():
@@ -281,7 +300,7 @@ def download_precinct_mapping_baseline():
 
 def debug_precinct_mapping():
     precinct_mapping = load_precinct_mapping()
-    early_voting = read_early_voting_data(35209) #nov 3 id
+    early_voting = read_early_voting_data(35209,"11/03/2020",{}) #nov 3 id
     election_data = read_election("/tmp/election_results_nov_3.csv")
     for x in election_data:
         contest = election_data[x]
@@ -418,10 +437,11 @@ def generate_predictions():
 
     projection_constants = {
         "rep_dem_share": 1, #assuming everyone in the runoff will vote for one of the two candidates, website said no write-ins allowed
-        "election_day_ratio": 0.81 #early voting is at 0.77 as of Jan 4 but maybe it would have been higher if not for the holidays, Nate Cohn suggesting 0.81 here: https://twitter.com/Nate_Cohn/status/1345766439135948801
+        "election_day_ratio": 0.81, #early voting is at 0.77 as of Jan 4 but maybe it would have been higher if not for the holidays, Nate Cohn suggesting 0.81 here: https://twitter.com/Nate_Cohn/status/1345766439135948801
+        "election_day_mail_count": 0.83 * 42718, #spitball estimate of the same-day mailin vote to be received on election day as 83% of that received for the general election -- rough extrapolation from looking at the amount coming in each day in early_voting_trends.py
     }
 
-    early_voting = read_early_voting_data(35211) #jan 5 runoff #MUST: update on election day
+    early_voting = read_early_voting_data(35211, "01/05/2021", projection_constants) #jan 5 runoff #MUST: download latest version on election day
 
     #generate a smaller dict with county and statewide info and a larger one with all precinct data
     pred = {}
