@@ -1,5 +1,4 @@
 #pull results from Georgia's website, by precinct
-import time
 import csv
 from bs4 import BeautifulSoup
 import requests
@@ -146,12 +145,15 @@ def update_election_data(election_id, filename, contest_name_mapping):
     if not os.path.exists(filename):
         writer.writeheader()
 
+    found_new_data = False
     for row in scrape_general_election_results(election_id, county_versions):
+        found_new_data = True
         #scrape only perdue for nov 3, as the loeffler election had many candidates so isn't very representative
         #Gwinnett county uses a different format for the contest names
         if row["contest"] not in contest_name_mapping: continue
         row["contest"] = contest_name_mapping[row["contest"]]
         writer.writerow(row)
+    return found_new_data
 
 
 def update_nov_3_election_data():
@@ -159,17 +161,14 @@ def update_nov_3_election_data():
         "US Senate (Perdue)": "perdue",
         "US Senate (Perdue)/Senado de los EE.UU. (Perdue)": "perdue"
     }
-    update_election_data(105369, "/tmp/election_results_nov_3.csv", contest_name_mapping)
+    return update_election_data(105369, "/tmp/election_results_nov_3.csv", contest_name_mapping)
 
 def update_jan_5_election_data():
-    #MUST: complete
+    #MUST: fill in election id and contest_name_mapping
     contest_name_mapping = {
 
     }
-    update_election_data(None, "/tmp/election_results_jan_5.csv", contest_name_mapping)
+    return update_election_data(None, "/tmp/election_results_jan_5.csv", contest_name_mapping)
 
 if __name__ == "__main__":
-    while True:
-        print("Checking for new data...")
-        update_nov_3_election_data()
-        time.sleep(10)
+    update_nov_3_election_data()

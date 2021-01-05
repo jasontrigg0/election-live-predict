@@ -402,13 +402,16 @@ def combine_early_baseline_live(early_voting, baseline_election_data, live_elect
     precinct_data = {"|".join(x):live_data[x] for x in live_data}
     return {"precinct": precinct_data, "county": county_data, "state": state_data, "time": datetime.datetime.now().strftime("%-I:%M %p ET, %B %-d, %Y")}
 
-
-if __name__ == "__main__":
+def generate_predictions():
     #specify projection_constants for expected differences from the baseline election
     #general priority:
     #1) live data if it exists
     #2) projection constants if specified
     #3) data from baseline election
+
+    #MUST: how many more mail-in ballots are expected?
+    #Nate Cohn saying something like 100k
+    #maybe look at the pattern from the nov 3 file on the days leading up to the election?
 
     #MUST: on Jan 3 Nate Cohn estimates "[...] Ossoff will amass a lead of around 350k out of the advance vote, including what he'll net out of ~100k absentee votes still to arrive"
     #where does the 100k estimate come from? are mail-in ballots that arrive late allowed?
@@ -453,3 +456,6 @@ if __name__ == "__main__":
         f_out.write(json.dumps(pred));
     with open("precinct-pred.json","w") as f_out:
         f_out.write(json.dumps(precinct_pred));
+
+if __name__ == "__main__":
+    generate_predictions()
