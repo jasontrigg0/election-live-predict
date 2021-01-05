@@ -1,5 +1,4 @@
-#try scraping from a few different sources
-#Georgia, NYT, other?
+#pull results from Georgia's website, by precinct
 import time
 import csv
 from bs4 import BeautifulSoup
@@ -8,11 +7,8 @@ import json
 import io
 import zipfile
 import datetime
-
-#TODOs
-#read existing file of results
-#scrape every minute, on updates write to file
-
+import itertools
+import os
 
 def all_county_info(election_id):
     current_version = requests.get(f"https://results.enr.clarityelections.com//GA/{election_id}/current_ver.txt").text
@@ -28,8 +24,11 @@ def all_county_info(election_id):
             "georgia_timestamp": georgia_timestamp
         }
 
-def scrape_general_election_results(election_id):
+def scrape_general_election_results(election_id, county_versions):
     for county_info in all_county_info(election_id):
+        #only download for counties with new updates available
+        if int(county_info["version"]) <= int(county_versions.get(county_info["county"],-1)):
+            continue
         #pull county precinct info:
         dat = json.loads(requests.get(f"https://results.enr.clarityelections.com//GA/{county_info['county']}/{county_info['county_election_id']}/{county_info['version']}/json/status.json").text)
         if not len(dat["P"]) == len(dat["S"]):
@@ -62,7 +61,7 @@ def scrape_county_results_json(county_info):
 
     download_time = datetime.datetime.now()
 
-    vote_types = { #MUST: confirm keys here match the votetype names in the other function
+    vote_types = {
         "Election Day Votes": json.loads(requests.get(f"https://results.enr.clarityelections.com//GA/{county}/{county_election_id}/{version}/json/Election_Day_Votes.json").text),
         "Absentee by Mail Votes": json.loads(requests.get(f"https://results.enr.clarityelections.com//GA/{county}/{county_election_id}/{version}/json/Absentee_by_Mail_Votes.json").text),
         "Advanced Voting Votes": json.loads(requests.get(f"https://results.enr.clarityelections.com//GA/{county}/{county_election_id}/{version}/json/Advanced_Voting_Votes.json").text),
@@ -128,36 +127,49 @@ def read_runoff_history():
     for r in csv.DictReader("runoff.csv"):
         yield r
 
-def scrape_nov_3():
-    #scrape only perdue for nov 3, as the loeffler election had many candidates so isn't very representative
-    nov_3_election_id = 105369
-    writer = csv.DictWriter(open("/tmp/election_results_nov_3.csv","w"),fieldnames=["contest","county","georgia_timestamp","timestamp","version","precinct","complete","candidate","category","votes"])
-    writer.writeheader()
-    for row in scrape_general_election_results(nov_3_election_id):
-        contest_name_mapping = {
-            "US Senate (Perdue)": "perdue",
-            "US Senate (Perdue)/Senado de los EE.UU. (Perdue)": "perdue"
-        }
+def update_election_data(election_id, filename, contest_name_mapping):
+    #first read in existing rows, then scrape current data and check for new rows
+    county_versions = {}
+
+    #read existing data
+    if os.path.exists(filename):
+        reader = csv.DictReader(open(filename))
+        for row in reader:
+            if int(row["version"]) > int(county_versions.get(row["county"],-1)):
+                county_versions[row["county"]] = row["version"]
+
+
+    #scrape new data
+    writer = csv.DictWriter(open(filename,"a"),fieldnames=["contest","county","georgia_timestamp","timestamp","version","precinct","complete","candidate","category","votes"])
+
+    #write header only when there's no existing data
+    if not os.path.exists(filename):
+        writer.writeheader()
+
+    for row in scrape_general_election_results(election_id, county_versions):
+        #scrape only perdue for nov 3, as the loeffler election had many candidates so isn't very representative
         #Gwinnett county uses a different format for the contest names
         if row["contest"] not in contest_name_mapping: continue
         row["contest"] = contest_name_mapping[row["contest"]]
         writer.writerow(row)
 
-def scrape_jan_5():
-    jan_5_election_id = None #MUST: fill in
-    writer = csv.DictWriter(open("/tmp/election_results_jan_5.csv","w"),fieldnames=["contest","county","georgia_timestamp","timestamp","version","precinct","complete","candidate","category","votes"])
-    writer.writeheader()
-    for row in scrape_general_election_results(jan_5_election_id):
-        #MUST: add perdue and loeffler contest names, plus possibly also double check whether Gwinnett county uses a different name
-        contest_name_mapping = {
 
-        }
-        if row["contest"] not in contest_name_mapping: continue
-        row["contest"] = contest_name_mapping[row["contest"]]
-        writer.writerow(row)
+def update_nov_3_election_data():
+    contest_name_mapping = {
+        "US Senate (Perdue)": "perdue",
+        "US Senate (Perdue)/Senado de los EE.UU. (Perdue)": "perdue"
+    }
+    update_election_data(105369, "/tmp/election_results_nov_3.csv", contest_name_mapping)
 
+def update_jan_5_election_data():
+    #MUST: complete
+    contest_name_mapping = {
 
-#pull results from Georgia's website, by precinct
+    }
+    update_election_data(None, "/tmp/election_results_jan_5.csv", contest_name_mapping)
+
 if __name__ == "__main__":
-    #loop through, continuously updating
-    scrape_nov_3()
+    while True:
+        print("Checking for new data...")
+        update_nov_3_election_data()
+        time.sleep(10)
