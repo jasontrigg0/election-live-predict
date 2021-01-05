@@ -52,8 +52,8 @@
      //update progress bar
      let dem = predJsonGlobal[currentElection]["state"][categoryName][`dem`];
      let rep = predJsonGlobal[currentElection]["state"][categoryName][`rep`];
-     let outsDem = predJsonGlobal[currentElection]["state"][categoryName][`outs_dem`] + 1000000; //MUST: remove
-     let outsRep = predJsonGlobal[currentElection]["state"][categoryName][`outs_rep`] + 1000000;
+     let outsDem = predJsonGlobal[currentElection]["state"][categoryName][`outs_dem`];
+     let outsRep = predJsonGlobal[currentElection]["state"][categoryName][`outs_rep`];
 
      let total = 1e-6;
      let updates = {
@@ -231,6 +231,8 @@
        $(this).addClass('active').siblings().removeClass('active');
        updateData();
      });
+
+     $('span#update-time').html(` <i>Last updated: ${predJsonGlobal["time"]}</i>.`);
    }
 
 </script>
@@ -245,7 +247,7 @@
   </nav>
   <div style='display: flex; flex-direction: column; width: 100%; align-items: center; padding-top: 30px'>
     <div style="width: 700px; margin-top: 0px; margin-bottom: 20px">
-        <span>Live vote count updates along with projections for incomplete counties and precincts. Data from the <a href="https://sos.ga.gov/index.php/Elections/current_and_past_elections_results">Georgia Secretary of State</a> and mail-in/early vote counts from Georgia's <a href="https://elections.sos.ga.gov/Elections/voterabsenteefile.do">absentee file</a>.</span>
+        <span>Live vote count updates along with projections for incomplete counties and precincts. Data from the <a href="https://sos.ga.gov/index.php/Elections/current_and_past_elections_results">Georgia Secretary of State</a> and mail-in/early vote counts from Georgia's <a href="https://elections.sos.ga.gov/Elections/voterabsenteefile.do">absentee file</a>.</span><span id="update-time"></span>
     </div>
     <div style="height: 80px; display: flex; align-items: center">
       <div style="margin-right: 15px"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Republican_Disc.svg/100px-Republican_Disc.svg.png" style="width: 75px"></img></div>
