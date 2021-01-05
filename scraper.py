@@ -153,7 +153,7 @@ def update_election_data(election_id, filename, contest_name_mapping):
     writer = csv.DictWriter(open(filename,"a"),fieldnames=["contest","county","georgia_timestamp","timestamp","version","precinct","complete","candidate","category","votes"])
 
     #write header only when there's no existing data
-    if not os.path.exists(filename):
+    if not county_versions:
         writer.writeheader()
 
     found_new_data = False
