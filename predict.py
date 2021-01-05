@@ -375,7 +375,7 @@ def combine_early_baseline_live(early_voting, baseline_election_data, live_elect
     precinct_completion = {}
     for county in live_election_data:
         for precinct in live_election_data[county]["votes"]:
-            precinct_completion[(county,precinct)] = live_election_data[county]["votes"][precinct]["complete"]
+            precinct_completion[(county,precinct)] = live_election_data[county]["votes"][precinct]["complete"] == "1"
 
     #use loaded data for projections
     gen_turnout_estimates(live_data, precinct_completion, baseline_data, early_voting, projection_constants)
@@ -430,7 +430,7 @@ def generate_predictions():
 
     projection_constants = {
         "rep_dem_share": 1, #assuming everyone in the runoff will vote for one of the two candidates, website said no write-ins allowed
-        "election_day_ratio": 0.81, #early voting is at 0.77 as of Jan 4 but maybe it would have been higher if not for the holidays, Nate Cohn suggesting 0.81 here: https://twitter.com/Nate_Cohn/status/1345766439135948801
+        "election_day_ratio": 1.25, #early voting is at 0.77 as of Jan 4 but maybe it would have been higher if not for the holidays, Nate Cohn suggesting 0.81 here: https://twitter.com/Nate_Cohn/status/1345766439135948801
         "election_day_mail_count": 0.83 * 42718, #spitball estimate of the same-day mailin vote to be received on election day as 83% of that received for the general election -- rough extrapolation from looking at the amount coming in each day in early_voting_trends.py
     }
 
