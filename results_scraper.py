@@ -102,12 +102,12 @@ def scrape_county_results_xml(county_info):
     raw_xml = z.read("detail.xml")
     soup = BeautifulSoup(raw_xml, "lxml")
     georgia_timestamp = soup.select("timestamp")[0].text
-    for contest in ["US Senate (Perdue)"]: #, "US Senate (Loeffler) - Special"]:
-        for choice in soup.select(f'contest[text="{contest}"] choice'):
+    for contest in soup.select('contest'):
+        for choice in contest.select('choice'):
             for votetype in choice.select("votetype"):
                 for precinct in votetype.select("precinct"):
                     yield {
-                        "contest": contest,
+                        "contest": contest["text"],
                         "county": county_info["county"],
                         "georgia_timestamp": georgia_timestamp,
                         "timestamp": download_time,
@@ -128,13 +128,36 @@ def read_runoff_history():
     for r in csv.DictReader("runoff.csv"):
         yield r
 
-#pull results from Georgia's website, by precinct
-if __name__ == "__main__":
+def scrape_nov_3():
+    #scrape only perdue for nov 3, as the loeffler election had many candidates so isn't very representative
     nov_3_election_id = 105369
-    writer = csv.DictWriter(open("/tmp/general_election_results.csv","w"),fieldnames=["contest","county","georgia_timestamp","timestamp","version","precinct","complete","candidate","category","votes"])
+    writer = csv.DictWriter(open("/tmp/election_results_nov_3.csv","w"),fieldnames=["contest","county","georgia_timestamp","timestamp","version","precinct","complete","candidate","category","votes"])
     writer.writeheader()
     for row in scrape_general_election_results(nov_3_election_id):
+        contest_name_mapping = {
+            "US Senate (Perdue)": "perdue",
+            "US Senate (Perdue)/Senado de los EE.UU. (Perdue)": "perdue"
+        }
         #Gwinnett county uses a different format for the contest names
-        if row["contest"] not in ["US Senate (Perdue)","US Senate (Perdue)/Senado de los EE.UU. (Perdue)"]: continue
-        row["contest"] = "US Senate (Perdue)"
+        if row["contest"] not in contest_name_mapping: continue
+        row["contest"] = contest_name_mapping[row["contest"]]
         writer.writerow(row)
+
+def scrape_jan_5():
+    jan_5_election_id = None #MUST: fill in
+    writer = csv.DictWriter(open("/tmp/election_results_jan_5.csv","w"),fieldnames=["contest","county","georgia_timestamp","timestamp","version","precinct","complete","candidate","category","votes"])
+    writer.writeheader()
+    for row in scrape_general_election_results(jan_5_election_id):
+        #MUST: add perdue and loeffler contest names, plus possibly also double check whether Gwinnett county uses a different name
+        contest_name_mapping = {
+
+        }
+        if row["contest"] not in contest_name_mapping: continue
+        row["contest"] = contest_name_mapping[row["contest"]]
+        writer.writerow(row)
+
+
+#pull results from Georgia's website, by precinct
+if __name__ == "__main__":
+    #loop through, continuously updating
+    scrape_nov_3()
