@@ -31,12 +31,15 @@ def all_county_info(election_id):
         yield {
             "county": county,
             "county_election_id": county_election_id,
-            "version": version,
+            #"version": version, #don't use the version from the main page, as it can go out of date -- instead pull from the county itself
             "georgia_timestamp": georgia_timestamp
         }
 
 def scrape_general_election_results(election_id, county_versions):
     for county_info in all_county_info(election_id):
+        #get version from the county page instead of the state page as it's more up-to-date
+        county_info["version"] = get(f"https://results.enr.clarityelections.com//GA/{county_info['county']}/{county_info['county_election_id']}/current_ver.txt").text
+
         #only download for counties with new updates available
         if int(county_info["version"]) <= int(county_versions.get(county_info["county"],-1)):
             continue
