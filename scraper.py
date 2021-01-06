@@ -37,8 +37,6 @@ def all_county_info(election_id):
 
 def scrape_general_election_results(election_id, county_versions):
     for county_info in all_county_info(election_id):
-        if county_info["county"] in ["Muscogee","Taylor"]: #MUST: Muscogee+Taylor broken, remove once they're working eg: https://results.enr.clarityelections.com//GA/Muscogee/107663/?v=273012
-            continue
         #only download for counties with new updates available
         if int(county_info["version"]) <= int(county_versions.get(county_info["county"],-1)):
             continue
@@ -257,4 +255,4 @@ def scrape_betfair_odds():
 
 if __name__ == "__main__":
     #scrape_betfair_odds()
-    #update_jan_5_election_data()
+    update_jan_5_election_data()
