@@ -198,6 +198,7 @@
      Plotly.d3.json('pred.json', function(predJson) {
        georgiaJsonGlobal = georgiaJson;
        predJsonGlobal = predJson;
+       $('span#update-time').html(` <i>Last updated: ${predJsonGlobal["time"]}</i>.`);
        setVoteCount();
        drawPlot('countyMap', "Total", "Total");
      });
@@ -207,7 +208,6 @@
    //it isn't needed until user clicks the map
    Plotly.d3.json('precinct-pred.json', function(precinctPredJson) {
      precinctPredJsonGlobal = precinctPredJson;
-     $('span#update-time').html(` <i>Last updated: ${predJsonGlobal["time"]}</i>.`);
    });
 
    window.onload = function() {
