@@ -35,24 +35,37 @@ def all_county_info(election_id):
             "georgia_timestamp": georgia_timestamp
         }
 
-def scrape_general_election_results(election_id, county_versions):
+def scrape_general_election_results(election_id, latest_county_versions):
     for county_info in all_county_info(election_id):
-        #get version from the county page instead of the state page as it's more up-to-date
-        county_info["version"] = get(f"https://results.enr.clarityelections.com//GA/{county_info['county']}/{county_info['county_election_id']}/current_ver.txt").text
+        #sometimes scrape_county requests return invalid json which then breaks
+        #so retry the same county when that happens after waiting for 5 seconds
+        while True:
+            try:
+                rows = list(scrape_county(county_info, latest_county_versions.get(county_info["county"],-1)))
+                break
+            except json.decoder.JSONDecodeError:
+                print("Download error. Sleeping for 5 seconds and retrying...")
+                time.sleep(5)
+        for r in rows:
+            yield r
 
-        #only download for counties with new updates available
-        if int(county_info["version"]) <= int(county_versions.get(county_info["county"],-1)):
-            continue
-        #pull county precinct info:
-        dat = json.loads(get(f"https://results.enr.clarityelections.com//GA/{county_info['county']}/{county_info['county_election_id']}/{county_info['version']}/json/status.json").text)
-        if not len(dat["P"]) == len(dat["S"]):
-            raise
-        completion = {p:1*(s==4) for p,s in zip(dat["P"],dat["S"])} #TODO: confirm this works for not-started precincts pre-election
+def scrape_county(county_info, latest_county_version):
+    #get version from the county page instead of the state page as it's more up-to-date
+    county_info["version"] = get(f"https://results.enr.clarityelections.com//GA/{county_info['county']}/{county_info['county_election_id']}/current_ver.txt").text
 
-        #NOTE: as of Jan 5, 11:25 AM looks like xml isn't available? Using scrape_county_results_json instead
-        for row in scrape_county_results_json(county_info):
-            row["complete"] = completion[row["precinct"]]
-            yield row
+    #only download for counties with new updates available
+    if int(county_info["version"]) <= int(latest_county_version):
+        return []
+    #pull county precinct info:
+    dat = json.loads(get(f"https://results.enr.clarityelections.com//GA/{county_info['county']}/{county_info['county_election_id']}/{county_info['version']}/json/status.json").text)
+    if not len(dat["P"]) == len(dat["S"]):
+        raise
+    completion = {p:1*(s==4) for p,s in zip(dat["P"],dat["S"])} #TODO: confirm this works for not-started precincts pre-election
+
+    #NOTE: as of Jan 5, 11:25 AM looks like xml isn't available? Using scrape_county_results_json instead
+    for row in scrape_county_results_json(county_info):
+        row["complete"] = completion[row["precinct"]]
+        yield row
 
 def scrape_county_results_json(county_info):
     county = county_info["county"]
@@ -146,8 +159,10 @@ def update_election_data(election_id, filename, contest_name_mapping):
     #first read in existing rows, then scrape current data and check for new rows
     county_versions = {}
 
+    file_exists = os.path.exists(filename)
+
     #read existing data
-    if os.path.exists(filename):
+    if file_exists:
         reader = csv.DictReader(open(filename))
         for row in reader:
             if int(row["version"]) > int(county_versions.get(row["county"],-1)):
@@ -158,7 +173,7 @@ def update_election_data(election_id, filename, contest_name_mapping):
     writer = csv.DictWriter(open(filename,"a"),fieldnames=["contest","county","georgia_timestamp","timestamp","version","precinct","complete","candidate","category","votes"])
 
     #write header only when there's no existing data
-    if not county_versions:
+    if not file_exists:
         writer.writeheader()
 
     found_new_data = False
