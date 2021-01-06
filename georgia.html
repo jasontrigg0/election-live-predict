@@ -207,6 +207,7 @@
    //it isn't needed until user clicks the map
    Plotly.d3.json('precinct-pred.json', function(precinctPredJson) {
      precinctPredJsonGlobal = precinctPredJson;
+     $('span#update-time').html(` <i>Last updated: ${predJsonGlobal["time"]}</i>.`);
    });
 
    window.onload = function() {
@@ -224,8 +225,6 @@
        $(this).addClass('active').siblings().removeClass('active');
        updateData();
      });
-
-     $('span#update-time').html(` <i>Last updated: ${predJsonGlobal["time"]}</i>.`);
    }
 
 </script>
