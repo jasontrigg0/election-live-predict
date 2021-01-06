@@ -49,12 +49,12 @@ def scrape_general_election_results(election_id, latest_county_versions):
         for r in rows:
             yield r
 
-def scrape_county(county_info, latest_county_version):
+def scrape_county(county_info, latest_version):
     #get version from the county page instead of the state page as it's more up-to-date
     county_info["version"] = get(f"https://results.enr.clarityelections.com//GA/{county_info['county']}/{county_info['county_election_id']}/current_ver.txt").text
 
     #only download for counties with new updates available
-    if int(county_info["version"]) <= int(latest_county_version):
+    if int(county_info["version"]) <= int(latest_version):
         return []
     #pull county precinct info:
     dat = json.loads(get(f"https://results.enr.clarityelections.com//GA/{county_info['county']}/{county_info['county_election_id']}/{county_info['version']}/json/status.json").text)
