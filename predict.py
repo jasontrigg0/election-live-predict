@@ -474,7 +474,7 @@ def generate_predictions():
             test_data = True #(live == "loeffler")
             live_election_data = read_election("/tmp/election_results_nov_3.csv", test_data)["perdue"]
         else:
-            live_election_data = read_election("/tmp/election_results_jan_5.csv")[live]
+            live_election_data = read_election("election_results_jan_5.csv")[live]
 
         data = combine_early_baseline_live(early_voting, baseline_election_data, live_election_data, projection_constants)
 
