@@ -224,7 +224,7 @@ def read_election(filename, generate_test_data = False):
                 candidate[row["category"]] = int(row["votes"])
     return election_data
 
-def read_early_voting_data(id_, election_day_mmddyyyy, projection_constants):
+def read_early_voting_data(id_, election_day_mmddyyyy, projection_constants, primary_data = None):
     #returns early_voting:
     #county_name -> "votes" -> precinct -> "total" -> category -> cnt
     precinct_mapping = load_precinct_mapping() #map from absentee file to early voting
@@ -248,18 +248,37 @@ def read_early_voting_data(id_, election_day_mmddyyyy, projection_constants):
                     print("Unknown early voting precinct, won't be processed: ",row["County"],row["County Precinct"])
                     unavailable.add((row["County"],row["County Precinct"]))
             precinct = county["votes"].setdefault(row["County Precinct"],{})
-            totals = precinct.setdefault("total",{})
 
-            totals.setdefault("Absentee by Mail Votes",0)
-            totals.setdefault("Advanced Voting Votes",0)
+            totals = precinct.setdefault("total",{})
+            rep_primary = precinct.setdefault("rep_primary",{})
+            dem_primary = precinct.setdefault("dem_primary",{})
+
+            #initialize
+            for dict_ in [totals,rep_primary,dem_primary]:
+                for typename in ["Absentee by Mail Votes", "Advanced Voting Votes"]:
+                    dict_.setdefault(typename,0)
+
             if row["Ballot Style"] == "MAILED":
-                totals["Absentee by Mail Votes"] += 1
+                typename = "Absentee by Mail Votes"
+                totals[typename] += 1
+                if primary_data and row["Voter Registration #"] in primary_data:
+                    if primary_data[row["Voter Registration #"]] == "REPUBLICAN":
+                        rep_primary[typename] += 1
+                    elif primary_data[row["Voter Registration #"]] == "DEMOCRAT":
+                        dem_primary[typename] += 1
 
                 total_mail_count += 1
                 if row["Ballot Return Date"] == election_day_mmddyyyy:
                     election_day_mail_count += 1
             elif row["Ballot Style"] == "IN PERSON":
-                totals["Advanced Voting Votes"] += 1
+                typename = "Advanced Voting Votes"
+                totals[typename] += 1
+                if primary_data and row["Voter Registration #"] in primary_data:
+                    if primary_data[row["Voter Registration #"]] == "REPUBLICAN":
+                        rep_primary[typename] += 1
+                    elif primary_data[row["Voter Registration #"]] == "DEMOCRAT":
+                        dem_primary[typename] += 1
+
 
     #adjust mailin counts upward to account for ballots that haven't been received
     #second clause of the if statement to automatically turn off this adjustment if/when we have an early vote file
