@@ -209,7 +209,7 @@ def read_election(filename, generate_test_data = False):
             precinct["complete"] = row["complete"]
         precinct_votes = precinct.setdefault("votes",{})
         candidate = precinct_votes.setdefault(row["candidate"],{})
-        if candidate.get(row["category"],-1) < int(row["votes"]):
+        if candidate.get(row["version"],-1) < int(row["version"]):
             county["georgia_timestamp"] = row["georgia_timestamp"]
             county["timestamp"] = row["timestamp"]
             county["version"] = row["version"]
