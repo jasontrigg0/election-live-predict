@@ -24,9 +24,8 @@ def get(url, options=None):
 def all_county_info(election_id):
     current_version = get(f"https://results.enr.clarityelections.com//GA/{election_id}/current_ver.txt").text
     url = f"https://results.enr.clarityelections.com//GA/{election_id}/{current_version}/json/en/electionsettings.json"
-    r = get(url)
 
-    for county_string in json.loads(r.text)["settings"]["electiondetails"]["participatingcounties"]:
+    for county_string in get(url).json()["settings"]["electiondetails"]["participatingcounties"]:
         county, county_election_id, version, georgia_timestamp, _ = county_string.split("|")
         yield {
             "county": county,
@@ -274,3 +273,4 @@ def scrape_betfair_odds():
 if __name__ == "__main__":
     #scrape_betfair_odds()
     update_jan_5_election_data()
+    #update_nov_3_election_data()
