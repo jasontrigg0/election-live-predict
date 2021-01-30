@@ -3,23 +3,13 @@ import csv
 import sys
 import os
 sys.path.append(os.path.dirname(__file__)) #allow import from current directory
-from predict import read_early_voting_data
+from predict import get_primary_voting, read_early_voting_data
 from lasso import StandardLasso
 import pickle
 import pandas as pd
 
 #following Nate Cohn's lead -- try to regress early voting election results against
 #information about which of those early voters voted in each party primary
-
-def get_primary_voting():
-    #TODO: possibly try including information about whether they returned their ballot
-    #in the primary?? currently only tracking which primary each voter voted in
-    info = {}
-    for filename in glob.glob("/home/jason/Downloads/35212/*csv"):
-        reader = csv.DictReader(open(filename))
-        for row in reader:
-            info[row["Voter Registration #"]] = row["Party"]
-    return info
 
 if __name__ == "__main__":
     from predict_new import load_election
